@@ -1,0 +1,179 @@
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+
+public class ContactManager extends JFrame {
+    private JTextField txtName, txtPhone, txtEmail;
+    private JComboBox<String> cmbCategory;
+    private JTable table;
+    private DefaultTableModel model;
+    private Connection conn;
+
+    public ContactManager() {
+        connectDB();
+
+        setTitle("Contact Management System");
+        setSize(750, 400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        // Input Panel
+        JPanel inputPanel = new JPanel(new GridLayout(4, 2, 5, 5));
+        inputPanel.add(new JLabel("Name:"));
+        txtName = new JTextField();
+        inputPanel.add(txtName);
+
+        inputPanel.add(new JLabel("Phone:"));
+        txtPhone = new JTextField();
+        inputPanel.add(txtPhone);
+
+        inputPanel.add(new JLabel("Email:"));
+        txtEmail = new JTextField();
+        inputPanel.add(txtEmail);
+
+        inputPanel.add(new JLabel("Category:"));
+        cmbCategory = new JComboBox<>(new String[]{"Family", "Friends", "Work"});
+        inputPanel.add(cmbCategory);
+
+        add(inputPanel, BorderLayout.NORTH);
+
+        // Buttons
+        JPanel buttonPanel = new JPanel();
+        JButton btnAdd = new JButton("Add");
+        JButton btnUpdate = new JButton("Update");
+        JButton btnDelete = new JButton("Delete");
+        JButton btnLoad = new JButton("Load Contacts");
+
+        buttonPanel.add(btnAdd);
+        buttonPanel.add(btnUpdate);
+        buttonPanel.add(btnDelete);
+        buttonPanel.add(btnLoad);
+
+        add(buttonPanel, BorderLayout.CENTER);
+
+        // Table
+        model = new DefaultTableModel(new String[]{"ID", "Name", "Phone", "Email", "Category"}, 0);
+        table = new JTable(model);
+        add(new JScrollPane(table), BorderLayout.SOUTH);
+
+        // Event Handling
+        btnAdd.addActionListener(e -> insertContact());
+        btnLoad.addActionListener(e -> loadContacts());
+        btnUpdate.addActionListener(e -> updateContact());
+        btnDelete.addActionListener(e -> deleteContact());
+
+        table.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                int row = table.getSelectedRow();
+                if (row != -1) {
+                    txtName.setText(model.getValueAt(row, 1).toString());
+                    txtPhone.setText(model.getValueAt(row, 2).toString());
+                    txtEmail.setText(model.getValueAt(row, 3).toString());
+                    cmbCategory.setSelectedItem(model.getValueAt(row, 4).toString());
+                }
+            }
+        });
+
+        setVisible(true);
+    }
+
+    private void connectDB() {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            conn = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/contactmanagment", "root", "geb2018"
+            );
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Database Connection Failed: " + ex.getMessage());
+        }
+    }
+
+    private void insertContact() {
+        try {
+            String sql = "INSERT INTO contacts (name, phone, email, category) VALUES (?, ?, ?, ?)";
+            PreparedStatement pst = conn.prepareStatement(sql);
+            pst.setString(1, txtName.getText());
+            pst.setString(2, txtPhone.getText());
+            pst.setString(3, txtEmail.getText());
+            pst.setString(4, cmbCategory.getSelectedItem().toString());
+            pst.executeUpdate();
+            JOptionPane.showMessageDialog(this, "Contact Added!");
+            loadContacts();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Insert Failed: " + ex.getMessage());
+        }
+    }
+
+    private void loadContacts() {
+        try {
+            model.setRowCount(0);
+            Statement st = conn.createStatement();
+            ResultSet rs = st.executeQuery("SELECT * FROM contacts ORDER BY id ASC");
+            while (rs.next()) {
+                model.addRow(new Object[]{
+                    rs.getInt("id"),
+                    rs.getString("name"),
+                    rs.getString("phone"),
+                    rs.getString("email"),
+                    rs.getString("category")
+                });
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Load Failed: " + ex.getMessage());
+        }
+    }
+
+    private void updateContact() {
+        int row = table.getSelectedRow();
+        if (row == -1) {
+            JOptionPane.showMessageDialog(this, "Select a contact to update.");
+            return;
+        }
+        try {
+            String sql = "UPDATE contacts SET name=?, phone=?, email=?, category=? WHERE id=?";
+            PreparedStatement pst = conn.prepareStatement(sql);
+            pst.setString(1, txtName.getText());
+            pst.setString(2, txtPhone.getText());
+            pst.setString(3, txtEmail.getText());
+            pst.setString(4, cmbCategory.getSelectedItem().toString());
+            pst.setInt(5, (int) model.getValueAt(row, 0));
+            pst.executeUpdate();
+            JOptionPane.showMessageDialog(this, "Contact Updated!");
+            loadContacts();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Update Failed: " + ex.getMessage());
+        }
+    }
+
+    private void deleteContact() {
+        int row = table.getSelectedRow();
+        if (row == -1) {
+            JOptionPane.showMessageDialog(this, "Select a contact to delete.");
+            return;
+        }
+        try {
+            String sql = "DELETE FROM contacts WHERE id=?";
+            PreparedStatement pst = conn.prepareStatement(sql);
+            pst.setInt(1, (int) model.getValueAt(row, 0));
+            pst.executeUpdate();
+            JOptionPane.showMessageDialog(this, "Contact Deleted!");
+            loadContacts();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Delete Failed: " + ex.getMessage());
+        }
+    }
+
+    public static void main(String[] args) {
+        new ContactManager();
+    }
+}
+
+
+/**
+ *
+ * @author LAB
+ */public class ContactManager {
+    
+}
